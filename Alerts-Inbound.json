@@ -1,0 +1,527 @@
+{
+  "description": "A New Flow",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "event": "incomingMessage"
+        },
+        {
+          "next": "gather_NewOrJoin",
+          "event": "incomingCall"
+        },
+        {
+          "event": "incomingRequest"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -530,
+          "y": -910
+        }
+      }
+    },
+    {
+      "name": "connect_newCallID",
+      "type": "connect-call-to",
+      "transitions": [
+        {
+          "event": "callCompleted"
+        },
+        {
+          "event": "hangup"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -110,
+          "y": 2230
+        },
+        "caller_id": "{{contact.channel.address}}",
+        "noun": "conference",
+        "to": "{{widgets.gather_newCallID.Digits}}",
+        "timeout": 30
+      }
+    },
+    {
+      "name": "http_GetOtherParticipants",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "next": "set_variables_DEMO",
+          "event": "success"
+        },
+        {
+          "next": "set_variables_PROD",
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -160,
+          "y": -130
+        },
+        "method": "GET",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "url": "https://api.twilio.com"
+      }
+    },
+    {
+      "name": "say_JoiningCall2",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "send_message_callID",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -140,
+          "y": 1730
+        },
+        "loop": 1,
+        "say": "Please wait for other party to join."
+      }
+    },
+    {
+      "name": "gather_newCallID",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "redirect_sayCallID2",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "speech_timeout": "auto",
+        "offset": {
+          "x": -130,
+          "y": 410
+        },
+        "loop": 1,
+        "finish_on_key": "#",
+        "say": "Enter your PIN and press pound, now.",
+        "stop_gather": true,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 5
+      }
+    },
+    {
+      "name": "http_DEMO_STYLE",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "next": "say_JoiningCall2",
+          "event": "success"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -160,
+          "y": 1480
+        },
+        "method": "POST",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "parameters": [
+          {
+            "value": "{{flow.variables.phone1}}",
+            "key": "To"
+          },
+          {
+            "value": "{{flow.channel.address}}",
+            "key": "From"
+          },
+          {
+            "value": "{\"name\":\"{{flow.variables.name1}}\", \"phone2\": \"{{flow.variables.phone2}}\", \"name2\":\"{{flow.variables.name2}}\", \"pin\":\"{{widgets.gather_newCallID.Digits}}\"}",
+            "key": "Parameters"
+          }
+        ],
+        "url": "https://<account_SID>:<auth_token>@studio.twilio.com/v1/Flows/FW3826b1298b1b47b5e572043636fc92d6/Executions"
+      }
+    },
+    {
+      "name": "send_message_callID",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "connect_newCallID",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -130,
+          "y": 1980
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Connecting to your call with PIN {{widgets.gather_newCallID.Digits}} now."
+      }
+    },
+    {
+      "name": "gather_NewOrJoin",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "split_NewOrJoin",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "speech_timeout": "auto",
+        "offset": {
+          "x": -490,
+          "y": -680
+        },
+        "loop": 1,
+        "finish_on_key": "#",
+        "say": "To start a new call, press 1, or enter the PIN and press pound, to join an existing call.",
+        "stop_gather": true,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 5
+      }
+    },
+    {
+      "name": "split_NewOrJoin",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "redirect_sayCallID1",
+          "event": "noMatch"
+        },
+        {
+          "next": "http_GetOtherParticipants",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "NEW",
+              "arguments": [
+                "{{widgets.gather_NewOrJoin.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "1"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.gather_NewOrJoin.Digits}}",
+        "offset": {
+          "x": -450,
+          "y": -440
+        }
+      }
+    },
+    {
+      "name": "redirect_sayCallID1",
+      "type": "add-twiml-redirect",
+      "transitions": [
+        {
+          "next": "gather_confirmCallID1",
+          "event": "return"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -660,
+          "y": -130
+        },
+        "method": "POST",
+        "url": "https://handler.twilio.com/twiml/EHab2b1bccceb130289de7e491aaa1f120?Digits={{widgets.gather_NewOrJoin.Digits}}",
+        "timeout": "14400"
+      }
+    },
+    {
+      "name": "gather_confirmCallID1",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "split_confirmCallID1",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "number_of_digits": 1,
+        "speech_timeout": "auto",
+        "offset": {
+          "x": -650,
+          "y": 130
+        },
+        "loop": 1,
+        "finish_on_key": "#",
+        "say": "If this is correct, press 1.",
+        "stop_gather": true,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 5
+      }
+    },
+    {
+      "name": "split_confirmCallID1",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "split_NewOrJoin",
+          "event": "noMatch"
+        },
+        {
+          "next": "say_JoiningCall1",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 1",
+              "arguments": [
+                "{{widgets.gather_confirmCallID1.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "1"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.gather_confirmCallID1.Digits}}",
+        "offset": {
+          "x": -1110,
+          "y": 440
+        }
+      }
+    },
+    {
+      "name": "say_JoiningCall1",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "connect_existingCallID",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -850,
+          "y": 860
+        },
+        "loop": 1,
+        "say": "Joining call now."
+      }
+    },
+    {
+      "name": "connect_existingCallID",
+      "type": "connect-call-to",
+      "transitions": [
+        {
+          "event": "callCompleted"
+        },
+        {
+          "event": "hangup"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -840,
+          "y": 1130
+        },
+        "caller_id": "{{contact.channel.address}}",
+        "noun": "conference",
+        "to": "{{widgets.gather_getExistingCallPin.Digits}}",
+        "timeout": 30
+      }
+    },
+    {
+      "name": "redirect_sayCallID2",
+      "type": "add-twiml-redirect",
+      "transitions": [
+        {
+          "next": "gather_confirmCallID2",
+          "event": "return"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -120,
+          "y": 670
+        },
+        "method": "POST",
+        "url": "https://handler.twilio.com/twiml/EHab2b1bccceb130289de7e491aaa1f120?Digits={{widgets.gather_newCallID.Digits}}",
+        "timeout": "14400"
+      }
+    },
+    {
+      "name": "gather_confirmCallID2",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "split_confirmCallID2",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "number_of_digits": 1,
+        "speech_timeout": "auto",
+        "offset": {
+          "x": -110,
+          "y": 930
+        },
+        "loop": 1,
+        "finish_on_key": "#",
+        "say": "If this is correct, press 1.",
+        "stop_gather": true,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 5
+      }
+    },
+    {
+      "name": "split_confirmCallID2",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "gather_newCallID",
+          "event": "noMatch"
+        },
+        {
+          "next": "http_DEMO_STYLE",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 1",
+              "arguments": [
+                "{{widgets.gather_confirmCallID2.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "1"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.gather_confirmCallID2.Digits}}",
+        "offset": {
+          "x": -290,
+          "y": 1180
+        }
+      }
+    },
+    {
+      "name": "set_variables_DEMO",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "gather_newCallID",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "+13173704984",
+            "key": "phone1"
+          },
+          {
+            "value": "Tim",
+            "key": "name1"
+          },
+          {
+            "value": "+13176473003",
+            "key": "phone2"
+          },
+          {
+            "value": "Tim Two",
+            "key": "name2"
+          }
+        ],
+        "offset": {
+          "x": -150,
+          "y": 120
+        }
+      }
+    },
+    {
+      "name": "set_variables_PROD",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "gather_newCallID",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "{{widgets.http_GetOtherParticipants.parsed.phone1}}",
+            "key": "phone1"
+          },
+          {
+            "value": "{{widgets.http_GetOtherParticipants.parsed.name1}}",
+            "key": "name1"
+          },
+          {
+            "value": "{{widgets.http_GetOtherParticipants.parsed.phone2}}",
+            "key": "phone2"
+          },
+          {
+            "value": "{{widgets.http_GetOtherParticipants.parsed.name2}}",
+            "key": "name2"
+          }
+        ],
+        "offset": {
+          "x": 280,
+          "y": 90
+        }
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}

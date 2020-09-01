@@ -1,0 +1,199 @@
+{
+  "description": "Alerts-Outbound",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "event": "incomingMessage"
+        },
+        {
+          "event": "incomingCall"
+        },
+        {
+          "next": "call_Participant",
+          "event": "incomingRequest"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "name": "call_Participant",
+      "type": "make-outgoing-call-v2",
+      "transitions": [
+        {
+          "next": "split_VMCheck",
+          "event": "answered"
+        },
+        {
+          "event": "busy"
+        },
+        {
+          "next": "send_missedCall",
+          "event": "noAnswer"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "machine_detection_speech_threshold": "2400",
+        "detect_answering_machine": true,
+        "offset": {
+          "x": 260,
+          "y": 190
+        },
+        "recording_channels": "mono",
+        "timeout": 60,
+        "machine_detection": "Enable",
+        "trim": "do-not-trim",
+        "record": false,
+        "machine_detection_speech_end_threshold": "1200",
+        "machine_detection_timeout": "30",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "machine_detection_silence_timeout": "5000"
+      }
+    },
+    {
+      "name": "say_joining",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "connect_callID",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -220,
+          "y": 710
+        },
+        "loop": 1,
+        "say": "Joining you to incident call now."
+      }
+    },
+    {
+      "name": "http_CallNextParticipantInLine",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "event": "success"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 440,
+          "y": 920
+        },
+        "method": "POST",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "parameters": [
+          {
+            "value": "{{flow.data.phone2}}",
+            "key": "To"
+          },
+          {
+            "value": "{{flow.channel.address}}",
+            "key": "From"
+          },
+          {
+            "value": "{\"name\":\"{{flow.data.name2}}\", \"phone2\": \"{{flow.data.flow3}}\", \"name2\":\"{{flow.data.name3}}\",\"pin\":\"{{flow.data.pin}}\"}",
+            "key": "Parameters"
+          }
+        ],
+        "url": "https://<account_SID>:<auth_token>@studio.twilio.com/v1/Flows/FW3826b1298b1b47b5e572043636fc92d6/Executions"
+      }
+    },
+    {
+      "name": "connect_callID",
+      "type": "connect-call-to",
+      "transitions": [
+        {
+          "event": "callCompleted"
+        },
+        {
+          "event": "hangup"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -220,
+          "y": 930
+        },
+        "caller_id": "{{contact.channel.address}}",
+        "noun": "conference",
+        "to": "{{flow.data.pin}}",
+        "timeout": 30
+      }
+    },
+    {
+      "name": "send_missedCall",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "http_CallNextParticipantInLine",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 440,
+          "y": 660
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "To join the incident response, call {{flow.channel.address}} and enter PIN {{flow.data.pin}}."
+      }
+    },
+    {
+      "name": "split_VMCheck",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "send_missedCall",
+          "event": "noMatch"
+        },
+        {
+          "next": "say_joining",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to human",
+              "arguments": [
+                "{{widgets.call_Participant.AnsweredBy}}"
+              ],
+              "type": "contains",
+              "value": "human"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.call_Participant.AnsweredBy}}",
+        "offset": {
+          "x": -30,
+          "y": 430
+        }
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}
